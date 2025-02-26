@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const connectDB = require("./config/db");
 const employeeRoute = require("./routes/employeeRoute"); // Ensure filename matches
 const morgan = require("morgan");
+const authRoutes = require("./routes/authRoutes");
 
 dotenv.config();
 connectDB();
@@ -18,6 +19,7 @@ app.use(bodyParser.json());
 app.use(morgan("tiny"));
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/employee", employeeRoute);
 
 app.get("/", (req, res) => {
