@@ -18,12 +18,15 @@ exports.authenticate = async (req, res, next) => {
 		});
 
 		const payload = ticket.getPayload();
+		console.log("Token payload:", payload); // Log the payload for debugging
+
 		req.user = {
 			email: payload.email,
 			role: ADMIN_EMAILS.includes(payload.email) ? "admin" : "user",
 		};
 		next();
 	} catch (err) {
+		console.error("Authentication error:", err); // Log the error for debugging
 		res.status(401).json({ error: "Invalid token" });
 	}
 };

@@ -1,17 +1,20 @@
 const mongoose = require("mongoose");
 
-const CounterSchema = new mongoose.Schema({
-	_id: { type: String, required: true },
-	seq: { type: Number, default: 0 },
+const counterSchema = new mongoose.Schema({
+	name: { type: String, required: true, unique: true },
+	sequence_value: { type: Number, default: 0 },
 });
 
-CounterSchema.statics.getNextSequence = async function (name) {
-	const result = await this.findByIdAndUpdate(
-		name,
-		{ $inc: { seq: 1 } },
-		{ new: true, upsert: true }
+const Counter = mongoose.model("Counter", counterSchema);
+
+// Function to increment and get the next sequence number
+Counter.getNextSequence = async function (name) {
+	const counter = await Counter.findOneAndUpdate(
+		{ name: name },
+		{ $inc: { sequence_value: 1 } },
+		{ new: true, upsert: true } // If not found, create a new counter
 	);
-	return result.seq;
+	return counter.sequence_value;
 };
 
-module.exports = mongoose.model("Counter", CounterSchema);
+module.exports = Counter;

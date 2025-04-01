@@ -34,39 +34,26 @@ router.get("/:id", authenticate, checkEmployeeExists, async (req, res) => {
 	res.status(200).json({ success: true, data: req.employee });
 });
 
-// POST create employee (Admin only)
 router.post("/", authenticate, authorizeAdmin, async (req, res) => {
+	console.log("Request body:", req.body); // Log the incoming request data
 	try {
-		if (!req.body.employeeId) {
+		const existingEmployee = await Employee.findOne({
+			employeeId: req.body.employeeId,
+		});
+		if (existingEmployee) {
 			return res
 				.status(400)
-				.json({ success: false, error: "employeeId is required" });
+				.json({ success: false, error: "Employee ID already exists" });
 		}
 
-		const employee = new Employee({
-			employeeId: req.body.employeeId,
-			firstName: req.body.firstName,
-			lastName: req.body.lastName,
-			age: req.body.age,
-			role: req.body.role,
-			contact: req.body.contact || "",
-			profile: req.body.profile || "",
-		});
-
+		const employee = new Employee(req.body);
 		await employee.save();
 		res.status(201).json({ success: true, data: employee });
 	} catch (err) {
-		if (err.code === 11000) {
-			return res.status(400).json({
-				success: false,
-				error: `Employee ID '${req.body.employeeId}' already exists`,
-			});
-		}
-		if (err.name === "ValidationError") {
-			const errors = Object.values(err.errors).map((val) => val.message);
-			return res.status(400).json({ success: false, error: errors.join(", ") });
-		}
-		res.status(500).json({ success: false, error: "Server error" });
+		console.error("Error creating employee:", err);
+		res
+			.status(500)
+			.json({ success: false, error: err.message || "Server error" });
 	}
 });
 
