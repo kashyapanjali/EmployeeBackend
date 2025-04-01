@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { authenticate, authorizeAdmin } = require("../middleware/auth");
 const Employee = require("../models/EmployeeSchema");
+const upload = require("../middleware/upload"); // Import the upload middleware
 
 // Middleware to check if employee exists
 const checkEmployeeExists = async (req, res, next) => {
@@ -34,26 +35,37 @@ router.get("/:id", authenticate, checkEmployeeExists, async (req, res) => {
 	res.status(200).json({ success: true, data: req.employee });
 });
 
-router.post("/", authenticate, authorizeAdmin, async (req, res) => {
-	try {
-		const existingEmployee = await Employee.findOne({
-			employeeId: req.body.employeeId,
-		});
-		if (existingEmployee) {
-			return res
-				.status(400)
-				.json({ success: false, error: "Employee ID already exists" });
-		}
+router.post(
+	"/",
+	authenticate,
+	authorizeAdmin,
+	upload.single("profile"),
+	async (req, res) => {
+		try {
+			const { employeeId, firstName, lastName, age, role, contact } = req.body;
 
-		const employee = new Employee(req.body);
-		await employee.save();
-		res.status(201).json({ success: true, data: employee });
-	} catch (err) {
-		res
-			.status(500)
-			.json({ success: false, error: err.message || "Server error" });
+			// Check if file was uploaded
+			const profile = req.file ? `/uploads/${req.file.filename}` : "";
+
+			const newEmployee = new Employee({
+				employeeId,
+				firstName,
+				lastName,
+				age,
+				role,
+				contact,
+				profile: profile, // Save image path in database
+			});
+
+			await newEmployee.save();
+			res.status(201).json({ success: true, data: newEmployee });
+		} catch (err) {
+			res
+				.status(500)
+				.json({ success: false, error: err.message || "Server error" });
+		}
 	}
-});
+);
 
 // PUT update employee (Admin only)
 router.put(
@@ -61,8 +73,12 @@ router.put(
 	authenticate,
 	authorizeAdmin,
 	checkEmployeeExists,
+	upload.single("profile"), // Use the multer middleware for handling image upload
 	async (req, res) => {
 		try {
+			if (req.file) {
+				req.body.profile = req.file.path; // Store the file path in profile field
+			}
 			const updatedEmployee = await Employee.findByIdAndUpdate(
 				req.params.id,
 				{

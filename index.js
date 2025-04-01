@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const connectDB = require("./config/db");
 const employeeRoute = require("./routes/employeeRoute"); // Ensure filename matches
 const morgan = require("morgan");
+const path = require("path");
 
 dotenv.config();
 connectDB();
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(morgan("tiny"));
+app.use("/upload", express.static("upload")); // Assuming 'uploads' is the folder where the profile images are stored
 
 // Routes
 app.use("/api/employees", employeeRoute);
