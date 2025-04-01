@@ -35,7 +35,6 @@ router.get("/:id", authenticate, checkEmployeeExists, async (req, res) => {
 });
 
 router.post("/", authenticate, authorizeAdmin, async (req, res) => {
-	console.log("Request body:", req.body); // Log the incoming request data
 	try {
 		const existingEmployee = await Employee.findOne({
 			employeeId: req.body.employeeId,
@@ -50,7 +49,6 @@ router.post("/", authenticate, authorizeAdmin, async (req, res) => {
 		await employee.save();
 		res.status(201).json({ success: true, data: employee });
 	} catch (err) {
-		console.error("Error creating employee:", err);
 		res
 			.status(500)
 			.json({ success: false, error: err.message || "Server error" });
