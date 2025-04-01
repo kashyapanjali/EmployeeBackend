@@ -1,122 +1,117 @@
 const express = require("express");
-const router = express.Router();
-const { authenticate, authorizeAdmin } = require("../middleware/auth");
 const Employee = require("../models/EmployeeSchema");
+const mongoose = require("mongoose");
 
-// Middleware to check if employee exists
-const checkEmployeeExists = async (req, res, next) => {
+const router = express.Router();
+
+//Add Employee
+router.post("/", async (req, res) => {
 	try {
-		const employee = await Employee.findById(req.params.id);
-		if (!employee) {
-			return res
-				.status(404)
-				.json({ success: false, error: "Employee not found" });
-		}
-		req.employee = employee;
-		next();
-	} catch (err) {
-		res.status(500).json({ success: false, error: "Server error" });
-	}
-};
+		const {
+			serialNo,
+			userId,
+			firstName,
+			lastName,
+			age,
+			role,
+			contact,
+			profile,
+		} = req.body;
 
-// GET all employees (Both admin and regular users)
-router.get("/", authenticate, async (req, res) => {
-	try {
-		const employees = await Employee.find().sort({ serialNo: 1 });
-		res.status(200).json({ success: true, data: employees });
-	} catch (err) {
-		res.status(500).json({ success: false, error: "Server error" });
-	}
-});
-
-// GET single employee (Both admin and regular users)
-router.get("/:id", authenticate, checkEmployeeExists, async (req, res) => {
-	res.status(200).json({ success: true, data: req.employee });
-});
-
-// POST create employee (Admin only)
-router.post("/", authenticate, authorizeAdmin, async (req, res) => {
-	try {
-		if (!req.body.employeeId) {
-			return res
-				.status(400)
-				.json({ success: false, error: "employeeId is required" });
+		// Check if user already exists
+		const existingEmployee = await Employee.findOne({ userId });
+		if (existingEmployee) {
+			return res.status(400).json({ error: "User already exists!" });
 		}
 
-		const employee = new Employee({
-			employeeId: req.body.employeeId,
-			firstName: req.body.firstName,
-			lastName: req.body.lastName,
-			age: req.body.age,
-			role: req.body.role,
-			contact: req.body.contact || "",
-			profile: req.body.profile || "",
+		// Create new employee document
+		const userDetails = new Employee({
+			serialNo,
+			userId,
+			firstName,
+			lastName,
+			age,
+			role,
+			contact,
+			profile,
 		});
-
-		await employee.save();
-		res.status(201).json({ success: true, data: employee });
-	} catch (err) {
-		if (err.code === 11000) {
-			return res.status(400).json({
-				success: false,
-				error: `Employee ID '${req.body.employeeId}' already exists`,
-			});
+		const savedDetails = await userDetails.save();
+		res.status(201).json({
+			message: "User Details Saved!",
+			userDetails: savedDetails,
+		});
+	} catch (error) {
+		// Handle MongoDB Unique Constraint Error
+		if (error.code === 11000) {
+			return res.status(400).json({ error: "User already exists!" });
 		}
-		if (err.name === "ValidationError") {
-			const errors = Object.values(err.errors).map((val) => val.message);
-			return res.status(400).json({ success: false, error: errors.join(", ") });
-		}
-		res.status(500).json({ success: false, error: "Server error" });
+		res.status(400).json({ error: error.message });
 	}
 });
 
-// PUT update employee (Admin only)
-router.put(
-	"/:id",
-	authenticate,
-	authorizeAdmin,
-	checkEmployeeExists,
-	async (req, res) => {
-		try {
-			const updatedEmployee = await Employee.findByIdAndUpdate(
-				req.params.id,
-				{
-					firstName: req.body.firstName,
-					lastName: req.body.lastName,
-					age: req.body.age,
-					role: req.body.role,
-					contact: req.body.contact,
-					profile: req.body.profile,
-				},
-				{ new: true, runValidators: true }
-			);
-			res.status(200).json({ success: true, data: updatedEmployee });
-		} catch (err) {
-			if (err.name === "ValidationError") {
-				const errors = Object.values(err.errors).map((val) => val.message);
-				return res
-					.status(400)
-					.json({ success: false, error: errors.join(", ") });
-			}
-			res.status(500).json({ success: false, error: "Server error" });
+// Update Employee by _id
+router.put("/:id", async (req, res) => {
+	try {
+		const employeeId = req.params.id;
+		if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+			return res.status(400).json({ error: "Invalid Employee ID format!" });
 		}
-	}
-);
-
-// DELETE employee (Admin only)
-router.delete(
-	"/:id",
-	authenticate,
-	authorizeAdmin,
-	checkEmployeeExists,
-	async (req, res) => {
-		try {
-			await Employee.findByIdAndDelete(req.params.id);
-			res.status(200).json({ success: true, data: {} });
-		} catch (err) {
-			res.status(500).json({ success: false, error: "Server error" });
+		const updatedData = req.body;
+		const updatedEmployee = await Employee.findByIdAndUpdate(
+			employeeId,
+			{ $set: updatedData },
+			{ new: true, runValidators: true }
+		);
+		// If employee not found -database
+		if (!updatedEmployee) {
+			return res.status(404).json({ error: "Employee not found!" });
 		}
+		res.status(200).json({
+			message: "Employee updated successfully!",
+			updatedEmployee,
+		});
+	} catch (error) {
+		res.status(400).json({ error: error.message });
 	}
-);
+});
 
+//find by id
+router.get("/:id", async (req, res) => {
+	try {
+		const employeeId = req.params.id;
+		if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+			return res.status(400).json({ error: "Invalid Employee ID format!" });
+		}
+		const getEmployee = await Employee.findById(employeeId);
+		if (!getEmployee) {
+			return res.status(404).json({ error: "Employee not found!" });
+		}
+		res.status(200).json({
+			message: "Employee find successfully!",
+			getEmployee,
+		});
+	} catch (error) {
+		res.status(400).json({ error: error.message });
+	}
+});
+
+//delete by id
+router.delete("/:id", async (req, res) => {
+	try {
+		const employeeId = req.params.id;
+		if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+			return res.status(400).json({ error: "Invalid Employee ID format!" });
+		}
+		const deleteEmployee = await Employee.findByIdAndDelete(employeeId);
+		if (!deleteEmployee) {
+			return res.status(404).json({ error: "Employee not found!" });
+		}
+		res.status(200).json({
+			message: "Employee delete successfully!",
+			employeeId,
+		});
+	} catch (error) {
+		res.status(400).json({ error: error.message });
+	}
+});
 module.exports = router;

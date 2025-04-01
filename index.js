@@ -18,7 +18,7 @@ app.use(bodyParser.json());
 app.use(morgan("tiny"));
 
 // Routes
-app.use("/api/employees", employeeRoute);
+app.use("/api/employee", employeeRoute);
 
 app.get("/", (req, res) => {
 	res.send("API is running...");
