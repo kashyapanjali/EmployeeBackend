@@ -8,12 +8,16 @@ if (!fs.existsSync(uploadDir)) {
 	fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Multer storage configuration
 const storage = multer.diskStorage({
 	destination: function (req, file, cb) {
-		cb(null, uploadDir); // Store images in 'uploads/' directory
+		console.log("Uploading to:", uploadDir);
+		cb(null, uploadDir);
 	},
 	filename: function (req, file, cb) {
-		cb(null, Date.now() + path.extname(file.originalname));
+		const filename = Date.now() + path.extname(file.originalname);
+		console.log("Generated filename:", filename);
+		cb(null, filename);
 	},
 });
 

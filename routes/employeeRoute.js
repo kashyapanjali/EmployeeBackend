@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const { authenticate, authorizeAdmin } = require("../middleware/auth");
 const Employee = require("../models/EmployeeSchema");
-const upload = require("../middleware/upload"); // Import the upload middleware
+const upload = require("../middleware/upload"); // Import Multer middleware
+const fs = require("fs");
+const path = require("path");
 
 // Middleware to check if employee exists
 const checkEmployeeExists = async (req, res, next) => {
@@ -20,7 +22,7 @@ const checkEmployeeExists = async (req, res, next) => {
 	}
 };
 
-// GET all employees (Both admin and regular users)
+// GET all employees (Admin & Users)
 router.get("/", authenticate, async (req, res) => {
 	try {
 		const employees = await Employee.find().sort({ serialNo: 1 });
@@ -30,11 +32,12 @@ router.get("/", authenticate, async (req, res) => {
 	}
 });
 
-// GET single employee (Both admin and regular users)
+// GET single employee
 router.get("/:id", authenticate, checkEmployeeExists, async (req, res) => {
 	res.status(200).json({ success: true, data: req.employee });
 });
 
+// CREATE new employee (Admin only)
 router.post(
 	"/",
 	authenticate,
@@ -45,7 +48,7 @@ router.post(
 			const { employeeId, firstName, lastName, age, role, contact } = req.body;
 
 			// Check if file was uploaded
-			const profile = req.file ? `/uploads/${req.file.filename}` : "";
+			const profile = req.file ? `/uploads/${req.file.filename}` : ""; // Ensure this is a relative path
 
 			const newEmployee = new Employee({
 				employeeId,
@@ -67,30 +70,38 @@ router.post(
 	}
 );
 
-// PUT update employee (Admin only)
+// UPDATE employee (Admin only)
 router.put(
 	"/:id",
 	authenticate,
 	authorizeAdmin,
 	checkEmployeeExists,
-	upload.single("profile"), // Use the multer middleware for handling image upload
+	upload.single("profile"),
 	async (req, res) => {
 		try {
+			let updatedData = { ...req.body };
+
+			// Handle profile image update
 			if (req.file) {
-				req.body.profile = req.file.path; // Store the file path in profile field
+				const newProfilePath = `/uploads/${req.file.filename}`;
+
+				// Delete old profile image (if exists)
+				if (req.employee.profile) {
+					const oldImagePath = path.join(__dirname, "..", req.employee.profile);
+					if (fs.existsSync(oldImagePath)) {
+						fs.unlinkSync(oldImagePath);
+					}
+				}
+
+				updatedData.profile = newProfilePath;
 			}
+
 			const updatedEmployee = await Employee.findByIdAndUpdate(
 				req.params.id,
-				{
-					firstName: req.body.firstName,
-					lastName: req.body.lastName,
-					age: req.body.age,
-					role: req.body.role,
-					contact: req.body.contact,
-					profile: req.body.profile,
-				},
+				updatedData,
 				{ new: true, runValidators: true }
 			);
+
 			res.status(200).json({ success: true, data: updatedEmployee });
 		} catch (err) {
 			if (err.name === "ValidationError") {
@@ -112,8 +123,18 @@ router.delete(
 	checkEmployeeExists,
 	async (req, res) => {
 		try {
+			// Delete profile image (if exists)
+			if (req.employee.profile) {
+				const imagePath = path.join(__dirname, "..", req.employee.profile);
+				if (fs.existsSync(imagePath)) {
+					fs.unlinkSync(imagePath);
+				}
+			}
+
 			await Employee.findByIdAndDelete(req.params.id);
-			res.status(200).json({ success: true, data: {} });
+			res
+				.status(200)
+				.json({ success: true, message: "Employee deleted successfully" });
 		} catch (err) {
 			res.status(500).json({ success: false, error: "Server error" });
 		}

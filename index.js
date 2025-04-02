@@ -3,7 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const connectDB = require("./config/db");
-const employeeRoute = require("./routes/employeeRoute"); // Ensure filename matches
+const employeeRoute = require("./routes/employeeRoute");
 const morgan = require("morgan");
 const path = require("path");
 
@@ -17,7 +17,9 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(morgan("tiny"));
-app.use("/upload", express.static("upload")); // Assuming 'uploads' is the folder where the profile images are stored
+
+// Serve static files (uploads directory)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/employees", employeeRoute);
