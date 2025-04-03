@@ -13,17 +13,7 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(
-	cors({
-		origin: [
-			"http://localhost:3000",
-			"https://employee-manage-app.netlify.app",
-		],
-		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE"],
-		allowedHeaders: ["Content-Type", "Authorization"],
-	})
-);
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(morgan("tiny"));
