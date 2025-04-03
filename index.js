@@ -17,7 +17,7 @@ app.use(
 	cors({
 		origin: [
 			"http://localhost:3000",
-			"https://employee-manage-app.netlify.app/",
+			"https://employee-manage-app.netlify.app",
 		],
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "DELETE"],
